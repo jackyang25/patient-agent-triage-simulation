@@ -1,36 +1,59 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Simulated Patient Agent Evaluation
 
-## Getting Started
+Multi-turn behavioral stress testing for patient-facing health agents. Catches escalation failures, scope violations, and action correctness issues that single-turn benchmarks miss.
 
-First, run the development server:
+## Quick Start
 
 ```bash
+# Install dependencies
+npm install
+
+# Set your API key in .env.local
+cp .env.local.example .env.local  # or edit .env.local directly
+
+# Run dev server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Docker
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+# Edit .env.local with your API key, then:
+docker compose up --build
+```
 
-## Learn More
+## Architecture
 
-To learn more about Next.js, take a look at the following resources:
+```
+lib/
+  types.ts           — shared type definitions
+  personas.ts        — pre-built patient persona templates
+  environments.ts    — pre-built environment configurations
+  ai.ts              — multi-provider LLM setup (OpenAI, Anthropic)
+  store.ts           — in-memory simulation run storage
+  simulator/
+    patient.ts       — LLM patient simulator driven by persona config
+    agent.ts         — stub health agent with tool calling
+    environment.ts   — service availability, capacity, system failures
+    runner.ts        — turn-by-turn conversation orchestrator
+    evaluator.ts     — post-conversation structured evaluation
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## API
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `GET /api/scenarios` — list available personas and environments
+- `POST /api/simulate` — start a simulation run
+- `GET /api/results/:id` — get simulation status and results (poll for completion)
+- `GET /api/runs` — list all simulation runs
 
-## Deploy on Vercel
+## Configuration
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Set in `.env.local`:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| Variable | Description |
+|---|---|
+| `OPENAI_API_KEY` | OpenAI API key |
+| `ANTHROPIC_API_KEY` | Anthropic API key |
+| `AI_PROVIDER` | Which provider to use: `openai` or `anthropic` |
