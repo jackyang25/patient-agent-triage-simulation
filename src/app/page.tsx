@@ -23,7 +23,10 @@ export default function ScenariosPage() {
 
   useEffect(() => {
     fetch("/api/scenarios")
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error(`Failed to load scenarios: ${r.status}`);
+        return r.json();
+      })
       .then((data) => {
         setScenarios(data.scenarios);
         setProfiles(data.profiles);
@@ -31,7 +34,8 @@ export default function ScenariosPage() {
         if (data.rubrics.length === 1) {
           setSelectedRubric(data.rubrics[0].id);
         }
-      });
+      })
+      .catch((err) => console.error("Failed to load scenarios:", err));
   }, []);
 
   function buildAdapterConfig(): AdapterConfig {
@@ -60,8 +64,14 @@ export default function ScenariosPage() {
           adapterConfig: buildAdapterConfig(),
         }),
       });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error ?? "Simulation launch failed");
+      }
       const data = await res.json();
       router.push(`/results/${data.id}`);
+    } catch (err) {
+      console.error("Launch failed:", err);
     } finally {
       setLaunching(false);
     }

@@ -1,4 +1,4 @@
-export { computeStats } from "./engine";
+export { computeStats, computeWeightedEstimate } from "./engine";
 export type {
   StatsResult,
   AccuracyMetrics,
@@ -11,4 +11,5 @@ export type {
   ProfileComparison,
   ProfileTemporalSummary,
   FailureModeCount,
+  WeightedEstimate,
 } from "./types";

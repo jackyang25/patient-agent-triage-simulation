@@ -104,6 +104,15 @@ export interface ProfileTemporalSummary {
   failureModes: FailureModeCount[];
 }
 
+// --- Population-weighted estimate ---
+
+export interface WeightedEstimate {
+  /** estimated % of real-world escalation cases the agent would miss */
+  weightedMissRate: number;
+  /** estimated % of all real-world cases the agent gets wrong */
+  weightedErrorRate: number;
+}
+
 // --- Top-level result ---
 
 export interface StatsResult {

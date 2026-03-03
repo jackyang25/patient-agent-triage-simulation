@@ -3,6 +3,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { FAILURE_MODES } from "@/lib/constants";
 import type {
   StatsResult,
   AccuracyMetrics,
@@ -14,12 +15,6 @@ import type {
   ProfileComparison,
   ProfileTemporalSummary,
 } from "@/lib/stats";
-
-const FAILURE_MODE_LABELS: Record<string, string> = {
-  never_probed: "Never Probed",
-  probed_but_abandoned: "Probed, Abandoned",
-  detected_but_no_action: "Detected, No Action",
-};
 
 const PROFILE_COLORS: Record<string, string> = {
   direct: "#22c55e",
@@ -438,7 +433,7 @@ function ProfileSummaryTable({ summaries }: { summaries: ProfileTemporalSummary[
             ) : (
               s.failureModes.map((fm) => (
                 <Badge key={fm.mode} variant="destructive" className="text-[10px]">
-                  {fm.count} {FAILURE_MODE_LABELS[fm.mode]}
+                  {fm.count} {FAILURE_MODES[fm.mode].label}
                 </Badge>
               ))
             )}

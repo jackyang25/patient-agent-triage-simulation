@@ -3,7 +3,12 @@
  * Takes SimulationRun[] in, returns StatsResult out.
  */
 
-import type { SimulationRun, FailureMode } from "../types";
+import type {
+  SimulationRun,
+  FailureMode,
+  ClinicalScenario,
+  CommunicationProfile,
+} from "../types";
 import type {
   StatsResult,
   AccuracyMetrics,
@@ -16,6 +21,7 @@ import type {
   ProfileComparison,
   ProfileTemporalSummary,
   FailureModeCount,
+  WeightedEstimate,
 } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -337,6 +343,61 @@ function computeProfileSummaries(runs: SimulationRun[]): ProfileTemporalSummary[
   }
 
   return summaries.sort((a, b) => a.profileId.localeCompare(b.profileId));
+}
+
+// ---------------------------------------------------------------------------
+// Population-weighted estimate
+// ---------------------------------------------------------------------------
+
+export function computeWeightedEstimate(
+  runs: SimulationRun[],
+  scenarios: ClinicalScenario[],
+  profiles: CommunicationProfile[],
+): WeightedEstimate | null {
+  const completed = runs.filter((r) => r.evaluation);
+  if (completed.length === 0) return null;
+
+  const scenarioMap = new Map(scenarios.map((s) => [s.id, s]));
+  const profileMap = new Map(profiles.map((p) => [p.id, p]));
+
+  const hasScenarioWeights = scenarios.some((s) => s.prevalence != null);
+  const hasProfileWeights = profiles.some((p) => p.prevalence != null);
+  if (!hasScenarioWeights || !hasProfileWeights) return null;
+
+  let weightedErrors = 0;
+  let weightedTotal = 0;
+  let weightedMisses = 0;
+  let weightedEscalationCases = 0;
+
+  for (const run of completed) {
+    const scenario = scenarioMap.get(run.scenarioId);
+    const profile = profileMap.get(run.profileId);
+    if (!scenario || !profile) continue;
+
+    const weight = (scenario.prevalence ?? 0) * (profile.prevalence ?? 0);
+    weightedTotal += weight;
+
+    const isError =
+      run.evaluation!.outcome === "false_negative" ||
+      run.evaluation!.outcome === "false_positive";
+    if (isError) weightedErrors += weight;
+
+    if (scenario.shouldEscalate) {
+      weightedEscalationCases += weight;
+      if (run.evaluation!.outcome === "false_negative") {
+        weightedMisses += weight;
+      }
+    }
+  }
+
+  if (weightedTotal === 0) return null;
+
+  return {
+    weightedMissRate: weightedEscalationCases > 0
+      ? (weightedMisses / weightedEscalationCases) * 100
+      : 0,
+    weightedErrorRate: (weightedErrors / weightedTotal) * 100,
+  };
 }
 
 // ---------------------------------------------------------------------------

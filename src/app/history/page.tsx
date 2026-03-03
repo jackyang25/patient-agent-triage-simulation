@@ -6,94 +6,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { computeStats } from "@/lib/stats";
+import { computeStats, computeWeightedEstimate } from "@/lib/stats";
+import type { WeightedEstimate } from "@/lib/stats";
 import { StatsPanel } from "@/components/stats-panel";
-import type { SimulationRun, EscalationResult, ClinicalScenario, CommunicationProfile } from "@/lib/types";
-
-const OUTCOME_SHORT: Record<EscalationResult["outcome"], string> = {
-  true_positive: "TP",
-  false_positive: "FP",
-  true_negative: "TN",
-  false_negative: "FN",
-};
-
-const OUTCOME_VARIANT: Record<string, "default" | "destructive" | "secondary" | "outline"> = {
-  true_positive: "default",
-  true_negative: "default",
-  false_negative: "destructive",
-  false_positive: "secondary",
-};
-
-// --- Weighted failure rate computation ---
-
-interface WeightedEstimate {
-  /** estimated % of real-world escalation cases the agent would miss */
-  weightedMissRate: number;
-  /** estimated % of all real-world cases the agent gets wrong */
-  weightedErrorRate: number;
-  /** whether weights were available to compute this */
-  hasWeights: boolean;
-}
-
-function computeWeightedEstimate(
-  runs: SimulationRun[],
-  scenarios: ClinicalScenario[],
-  profiles: CommunicationProfile[],
-): WeightedEstimate | null {
-  const completed = runs.filter((r) => r.evaluation);
-  if (completed.length === 0) return null;
-
-  const scenarioMap = new Map(scenarios.map((s) => [s.id, s]));
-  const profileMap = new Map(profiles.map((p) => [p.id, p]));
-
-  // check if we have prevalence data
-  const hasScenarioWeights = scenarios.some((s) => s.prevalence != null);
-  const hasProfileWeights = profiles.some((p) => p.prevalence != null);
-  if (!hasScenarioWeights || !hasProfileWeights) {
-    return null;
-  }
-
-  // for each completed run, compute its population weight = scenario prevalence * profile prevalence
-  // then compute weighted error and miss rates
-  let weightedErrors = 0;
-  let weightedTotal = 0;
-  let weightedMisses = 0;
-  let weightedEscalationCases = 0;
-
-  for (const run of completed) {
-    const scenario = scenarioMap.get(run.scenarioId);
-    const profile = profileMap.get(run.profileId);
-    if (!scenario || !profile) continue;
-
-    const sp = scenario.prevalence ?? 0;
-    const pp = profile.prevalence ?? 0;
-    const weight = sp * pp;
-
-    weightedTotal += weight;
-
-    const isError =
-      run.evaluation!.outcome === "false_negative" ||
-      run.evaluation!.outcome === "false_positive";
-    if (isError) weightedErrors += weight;
-
-    if (scenario.shouldEscalate) {
-      weightedEscalationCases += weight;
-      if (run.evaluation!.outcome === "false_negative") {
-        weightedMisses += weight;
-      }
-    }
-  }
-
-  if (weightedTotal === 0) return null;
-
-  return {
-    weightedMissRate: weightedEscalationCases > 0
-      ? (weightedMisses / weightedEscalationCases) * 100
-      : 0,
-    weightedErrorRate: (weightedErrors / weightedTotal) * 100,
-    hasWeights: true,
-  };
-}
+import { OUTCOME_SHORT, OUTCOME_VARIANT } from "@/lib/constants";
+import type { SimulationRun, ClinicalScenario, CommunicationProfile } from "@/lib/types";
 
 // --- Components ---
 
@@ -234,6 +151,10 @@ function ProfileBreakdown({ runs }: { runs: SimulationRun[] }) {
   );
 }
 
+function isRunInProgress(run: SimulationRun): boolean {
+  return run.status === "pending" || run.status === "simulating" || run.status === "evaluating";
+}
+
 export default function HistoryPage() {
   const [runs, setRuns] = useState<SimulationRun[]>([]);
   const [scenarios, setScenarios] = useState<ClinicalScenario[]>([]);
@@ -262,17 +183,12 @@ export default function HistoryPage() {
 
   // poll while any run is still in progress
   useEffect(() => {
-    const hasInProgress = runs.some(
-      (r) => r.status === "pending" || r.status === "simulating" || r.status === "evaluating",
-    );
+    const hasInProgress = runs.some(isRunInProgress);
 
     if (hasInProgress && !intervalRef.current) {
       intervalRef.current = setInterval(() => {
         fetchRuns().then((latest) => {
-          const stillRunning = latest.some(
-            (r: SimulationRun) =>
-              r.status === "pending" || r.status === "simulating" || r.status === "evaluating",
-          );
+          const stillRunning = latest.some(isRunInProgress);
           if (!stillRunning && intervalRef.current) {
             clearInterval(intervalRef.current);
             intervalRef.current = null;
@@ -302,9 +218,7 @@ export default function HistoryPage() {
     );
   }
 
-  const inProgressCount = runs.filter(
-    (r) => r.status === "pending" || r.status === "simulating" || r.status === "evaluating",
-  ).length;
+  const inProgressCount = runs.filter(isRunInProgress).length;
   const completedCount = runs.filter((r) => r.status === "completed" || r.status === "failed").length;
 
   const weighted = computeWeightedEstimate(runs, scenarios, profiles);

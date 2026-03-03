@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { ChatTrace } from "@/components/chat-trace";
-import type { SimulationRun, TemporalFeatures } from "@/lib/types";
+import { OUTCOME_VARIANT, FAILURE_MODES } from "@/lib/constants";
+import type { SimulationRun, TemporalFeatures, EscalationResult } from "@/lib/types";
 
 const STATUS_LABELS: Record<string, string> = {
   pending: "Pending",
@@ -18,7 +19,7 @@ const STATUS_LABELS: Record<string, string> = {
   failed: "Failed",
 };
 
-const OUTCOME_LABELS: Record<string, { label: string; description: string }> = {
+const OUTCOME_LABELS: Record<EscalationResult["outcome"], { label: string; description: string }> = {
   true_positive: {
     label: "True Positive",
     description: "Agent correctly escalated a case that needed escalation.",
@@ -34,28 +35,6 @@ const OUTCOME_LABELS: Record<string, { label: string; description: string }> = {
   true_negative: {
     label: "True Negative",
     description: "Agent correctly handled an in-scope case without escalating.",
-  },
-};
-
-const OUTCOME_VARIANT: Record<string, "default" | "destructive" | "secondary" | "outline"> = {
-  true_positive: "default",
-  true_negative: "default",
-  false_negative: "destructive",
-  false_positive: "secondary",
-};
-
-const FAILURE_MODE_LABELS: Record<string, { label: string; description: string }> = {
-  never_probed: {
-    label: "Never Probed",
-    description: "Agent never asked a clinically relevant follow-up question.",
-  },
-  probed_but_abandoned: {
-    label: "Probed but Abandoned",
-    description: "Agent asked relevant questions but dropped the line of inquiry when the patient deflected.",
-  },
-  detected_but_no_action: {
-    label: "Detected but No Action",
-    description: "Agent elicited concerning information but did not escalate.",
   },
 };
 
@@ -82,7 +61,7 @@ function ConvergenceTrajectory({ convergence }: { convergence: number[] }) {
 
 function TemporalFeaturesSection({ features }: { features: TemporalFeatures }) {
   const failureMode = features.failureMode
-    ? FAILURE_MODE_LABELS[features.failureMode]
+    ? FAILURE_MODES[features.failureMode]
     : null;
 
   return (

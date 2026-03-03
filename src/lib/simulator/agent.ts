@@ -28,9 +28,8 @@ When you determine the patient needs human medical attention, use the escalateTo
 export class StubAgentAdapter implements AgentAdapter {
   async respond(
     conversationHistory: Message[],
-    turnIndex: number,
+    _turnIndex: number,
   ): Promise<AgentResponse> {
-    void turnIndex;
 
     const messages = conversationHistory
       .filter((m) => m.content)

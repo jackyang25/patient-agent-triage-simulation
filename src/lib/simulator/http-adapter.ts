@@ -44,9 +44,8 @@ export class HttpAgentAdapter implements AgentAdapter {
 
   async respond(
     messages: Message[],
-    turnIndex: number,
+    _turnIndex: number,
   ): Promise<AgentResponse> {
-    void turnIndex;
 
     const body = {
       messages: messages.map((m) => ({
