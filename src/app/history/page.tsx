@@ -255,10 +255,14 @@ export default function HistoryPage() {
         </div>
       </div>
 
-      {/* Aggregate view */}
+      {/* Layer 1 — Confusion Matrix */}
+      <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+        Layer 1 — Confusion Matrix
+      </h3>
       <ConfusionMatrix runs={runs} />
       {weighted && <WeightedEstimateCard estimate={weighted} />}
       <ProfileBreakdown runs={runs} />
+
       <StatsPanel stats={computeStats(runs)} />
 
       {/* Individual runs */}

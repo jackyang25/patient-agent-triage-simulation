@@ -6,7 +6,6 @@ import { Separator } from "@/components/ui/separator";
 import { FAILURE_MODES } from "@/lib/constants";
 import type {
   StatsResult,
-  AccuracyMetrics,
   ScenarioBreakdown,
   FailureHeatmapCell,
   RankedFailure,
@@ -42,45 +41,7 @@ function fmtMeanSd(m: number | null, s: number | null): string {
 }
 
 // ---------------------------------------------------------------------------
-// 1. Accuracy overview
-// ---------------------------------------------------------------------------
-
-function AccuracyCard({ metrics }: { metrics: AccuracyMetrics }) {
-  const items = [
-    { label: "Accuracy", value: pct(metrics.accuracy) },
-    { label: "Sensitivity", value: pct(metrics.sensitivity), sub: "catches escalations" },
-    { label: "Specificity", value: pct(metrics.specificity), sub: "avoids false alarms" },
-    { label: "F1", value: pct(metrics.f1) },
-  ];
-
-  return (
-    <Card>
-      <CardContent className="py-6">
-        <p className="text-xs text-muted-foreground font-medium mb-3">
-          Aggregate Accuracy
-        </p>
-        <div className="grid grid-cols-4 gap-4 mb-4">
-          {items.map((it) => (
-            <div key={it.label} className="text-center">
-              <div className="text-2xl font-semibold">{it.value}</div>
-              <div className="text-xs text-muted-foreground">{it.label}</div>
-              {it.sub && <div className="text-[10px] text-muted-foreground/60">{it.sub}</div>}
-            </div>
-          ))}
-        </div>
-        <div className="grid grid-cols-4 gap-2 text-xs text-center text-muted-foreground">
-          <div>TP {metrics.tp}</div>
-          <div>FP {metrics.fp}</div>
-          <div>FN {metrics.fn}</div>
-          <div>TN {metrics.tn}</div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// 2. Per-scenario breakdown
+// Per-scenario breakdown
 // ---------------------------------------------------------------------------
 
 function ScenarioTable({ breakdowns }: { breakdowns: ScenarioBreakdown[] }) {
@@ -688,24 +649,37 @@ export function StatsPanel({ stats }: { stats: StatsResult }) {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
-        Statistical Analysis ({stats.totalRuns} runs)
-      </h2>
-
-      {/* Accuracy overview — the first thing a builder sees */}
-      <AccuracyCard metrics={stats.accuracy} />
-
-      {/* Ranked worst failures */}
       <RankedFailuresCard failures={stats.rankedFailures} />
-
-      {/* Per-scenario breakdown */}
       <ScenarioTable breakdowns={stats.scenarioBreakdowns} />
-
-      {/* Failure heatmap */}
       <FailureHeatmap cells={stats.failureHeatmap} />
-
-      {/* Validation quality */}
       <ValidationCard summary={stats.validationSummary} />
+
+      <Separator />
+
+      <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+        Layer 2 — Temporal Features
+      </h3>
+
+      <Card>
+        <CardContent className="py-6">
+          <p className="text-xs text-muted-foreground font-medium mb-3">
+            Temporal Features by Profile
+          </p>
+          {stats.profileSummaries.some((s) => s.meanSignalRecognition !== null) ? (
+            <>
+              <p className="text-[10px] text-muted-foreground mb-4">
+                Mean \u00B1 SD across conversations. Signal Turn = when the agent first probed.
+                Commit Turn = when the agent locked in its decision.
+              </p>
+              <ProfileSummaryTable summaries={stats.profileSummaries} />
+            </>
+          ) : (
+            <p className="text-[10px] text-muted-foreground">
+              Requires runs with successful temporal annotation. Run more simulations or check server logs for annotation errors.
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       <Separator />
 
@@ -737,28 +711,6 @@ export function StatsPanel({ stats }: { stats: StatsResult }) {
           ) : (
             <p className="text-[10px] text-muted-foreground">
               Requires multiple completed runs with escalate-labeled scenarios and temporal annotations.
-            </p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Temporal summary by profile */}
-      <Card>
-        <CardContent className="py-6">
-          <p className="text-xs text-muted-foreground font-medium mb-3">
-            Temporal Features by Profile
-          </p>
-          {stats.profileSummaries.some((s) => s.meanSignalRecognition !== null) ? (
-            <>
-              <p className="text-[10px] text-muted-foreground mb-4">
-                Mean \u00B1 SD across conversations. Signal Turn = when the agent first probed.
-                Commit Turn = when the agent locked in its decision.
-              </p>
-              <ProfileSummaryTable summaries={stats.profileSummaries} />
-            </>
-          ) : (
-            <p className="text-[10px] text-muted-foreground">
-              Requires runs with successful temporal annotation. Run more simulations or check server logs for annotation errors.
             </p>
           )}
         </CardContent>
