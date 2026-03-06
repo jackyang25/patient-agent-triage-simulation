@@ -59,11 +59,8 @@ src/
       temporal.ts       temporal feature derivation (Layer 2)
       pipeline.ts       orchestrates the full pipeline
     stats/
-      engine.ts         descriptive stats + KM survival curves
+      engine.ts         all three layers of statistical analysis
       types.ts          statistical output types
-analysis/
-  harness.py            Layer 3 inferential statistics (Python)
-  requirements.txt      lifelines, statsmodels, ruptures, matplotlib
 ```
 
 ---
@@ -84,13 +81,10 @@ GET    /api/export             completed runs as flat JSON
 
 ## Statistical analysis
 
-**In-app** (TypeScript, instant) -- confusion matrix, accuracy/sensitivity/specificity/F1, per-scenario breakdowns, failure heatmap, Kaplan-Meier survival curves, profile temporal summaries, near-miss detection, failure mode classification.
+All computed in-app. Results appear on the history page after running simulations.
 
-**Offline** (Python, rigorous) -- Cox PH with p-values and log-rank tests, mixed-effects models with REML, PELT change-point detection, publication-quality plots.
+**Layer 1** -- confusion matrix, accuracy, sensitivity, specificity, F1, per-scenario breakdowns, failure heatmap.
 
-```bash
-pip install -r analysis/requirements.txt
-python analysis/harness.py              # app must be running
-```
+**Layer 2** -- temporal summaries by profile (signal recognition turn, commitment turn, info extraction rate), near-miss detection, failure mode classification.
 
-Output goes to `analysis/output/`. The harness fetches from `/api/export`.
+**Layer 3** -- Kaplan-Meier survival curves, Cox proportional hazards (hazard ratios + CIs), change-point detection, mixed-effects variance decomposition.

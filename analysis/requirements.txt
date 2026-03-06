@@ -1,7 +1,0 @@
-pandas>=2.2
-numpy>=1.26
-lifelines>=0.30
-statsmodels>=0.14
-ruptures>=1.1.9
-matplotlib>=3.8
-requests>=2.31

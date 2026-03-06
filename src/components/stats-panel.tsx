@@ -14,6 +14,9 @@ import type {
   KMCurve,
   ProfileComparison,
   ProfileTemporalSummary,
+  CoxResult,
+  ChangePointSummary,
+  MixedEffectsResult,
 } from "@/lib/stats";
 
 const PROFILE_COLORS: Record<string, string> = {
@@ -445,6 +448,214 @@ function ProfileSummaryTable({ summaries }: { summaries: ProfileTemporalSummary[
 }
 
 // ---------------------------------------------------------------------------
+// Cox Proportional Hazards
+// ---------------------------------------------------------------------------
+
+function CoxCard({ result }: { result: CoxResult }) {
+  return (
+    <Card>
+      <CardContent className="py-6">
+        <p className="text-xs text-muted-foreground font-medium mb-1">
+          Cox Proportional Hazards
+        </p>
+        <p className="text-[10px] text-muted-foreground mb-3">
+          Hazard ratio for time-to-escalation relative to {result.baselineProfile} (baseline).
+          HR &gt; 1 = faster escalation. HR &lt; 1 = slower escalation.
+          Based on {result.n} escalation-worthy runs ({result.events} events).
+        </p>
+        <div className="space-y-2">
+          <div className="grid grid-cols-5 gap-2 text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
+            <div>Profile</div>
+            <div>Hazard Ratio</div>
+            <div>95% CI</div>
+            <div>Coefficient</div>
+            <div>SE</div>
+          </div>
+          <div className="grid grid-cols-5 gap-2 text-sm items-center">
+            <div className="font-medium flex items-center gap-1.5">
+              <div
+                className="w-2.5 h-2.5 rounded-full"
+                style={{ backgroundColor: fallbackColor(result.baselineProfile) }}
+              />
+              {result.baselineProfile}
+            </div>
+            <div className="text-muted-foreground">1.00 (ref)</div>
+            <div className="text-muted-foreground">&mdash;</div>
+            <div className="text-muted-foreground">0</div>
+            <div className="text-muted-foreground">&mdash;</div>
+          </div>
+          {result.coefficients.map((c) => {
+            const slow = c.hazardRatio < 0.8;
+            const fast = c.hazardRatio > 1.2;
+            return (
+              <div key={c.profileId} className="grid grid-cols-5 gap-2 text-sm items-center">
+                <div className="font-medium flex items-center gap-1.5">
+                  <div
+                    className="w-2.5 h-2.5 rounded-full"
+                    style={{ backgroundColor: fallbackColor(c.profileId) }}
+                  />
+                  {c.profileId}
+                </div>
+                <div className={slow ? "text-red-400 font-semibold" : fast ? "text-green-400 font-semibold" : ""}>
+                  {c.hazardRatio.toFixed(2)}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  [{c.ciLower.toFixed(2)}, {c.ciUpper.toFixed(2)}]
+                </div>
+                <div className="text-xs">{c.coefficient.toFixed(3)}</div>
+                <div className="text-xs text-muted-foreground">{c.se.toFixed(3)}</div>
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Change-point detection
+// ---------------------------------------------------------------------------
+
+function ChangePointCard({ summaries }: { summaries: ChangePointSummary[] }) {
+  const withData = summaries.filter((s) => s.n > 0);
+  if (withData.length === 0) return null;
+
+  return (
+    <Card>
+      <CardContent className="py-6">
+        <p className="text-xs text-muted-foreground font-medium mb-1">
+          Change-Point Detection
+        </p>
+        <p className="text-[10px] text-muted-foreground mb-3">
+          Per conversation: detects the turn where agent behavior meaningfully shifted direction.
+          Position is the fractional point in the conversation (0 = start, 1 = end).
+        </p>
+        <div className="space-y-2">
+          <div className="grid grid-cols-5 gap-2 text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
+            <div>Profile</div>
+            <div>Conversations</div>
+            <div>With Shift</div>
+            <div>Mean Position</div>
+            <div>Mean Shift</div>
+          </div>
+          {summaries.map((s) => (
+            <div key={s.profileId} className="grid grid-cols-5 gap-2 text-sm items-center">
+              <div className="font-medium flex items-center gap-1.5">
+                <div
+                  className="w-2.5 h-2.5 rounded-full"
+                  style={{ backgroundColor: fallbackColor(s.profileId) }}
+                />
+                {s.profileId}
+              </div>
+              <div>{s.n}</div>
+              <div>
+                {s.withChangePoint > 0 ? (
+                  <span>
+                    {s.withChangePoint}
+                    <span className="text-muted-foreground text-xs ml-1">
+                      ({((s.withChangePoint / s.n) * 100).toFixed(0)}%)
+                    </span>
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground">0</span>
+                )}
+              </div>
+              <div>
+                {s.meanPosition !== null
+                  ? fmtMeanSd(s.meanPosition, s.sdPosition)
+                  : <span className="text-muted-foreground">N/A</span>}
+              </div>
+              <div>
+                {s.meanShiftMagnitude !== null
+                  ? s.meanShiftMagnitude.toFixed(2)
+                  : <span className="text-muted-foreground">N/A</span>}
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Mixed-effects model
+// ---------------------------------------------------------------------------
+
+function MixedEffectsCard({ result }: { result: MixedEffectsResult }) {
+  const iccPct = (result.icc * 100).toFixed(0);
+  const profilePct = ((1 - result.icc) * 100).toFixed(0);
+
+  return (
+    <Card>
+      <CardContent className="py-6">
+        <p className="text-xs text-muted-foreground font-medium mb-1">
+          Mixed-Effects Model
+        </p>
+        <p className="text-[10px] text-muted-foreground mb-3">
+          Separates scenario difficulty (random effect) from communication style (fixed effect).
+          Based on {result.n} runs. Baseline failure rate: {(result.intercept * 100).toFixed(1)}%.
+        </p>
+
+        <div className="flex items-center gap-4 mb-4">
+          <div className="flex-1">
+            <div className="flex h-3 rounded-full overflow-hidden">
+              <div
+                className="bg-blue-500"
+                style={{ width: `${iccPct}%` }}
+                title={`Scenario difficulty: ${iccPct}%`}
+              />
+              <div
+                className="bg-amber-500"
+                style={{ width: `${profilePct}%` }}
+                title={`Communication style + residual: ${profilePct}%`}
+              />
+            </div>
+            <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
+              <span>Scenario difficulty: {iccPct}% of variance</span>
+              <span>Communication style + residual: {profilePct}%</span>
+            </div>
+          </div>
+        </div>
+
+        <Separator className="my-4" />
+
+        <p className="text-xs text-muted-foreground font-medium mb-2">
+          Profile Effects on Failure Rate (vs. {result.baselineProfile})
+        </p>
+        <div className="space-y-1.5">
+          {result.profileEffects.map((pe) => {
+            const sign = pe.estimate >= 0 ? "+" : "";
+            const bad = pe.estimate > 0.05;
+            const good = pe.estimate < -0.05;
+            return (
+              <div key={pe.profileId} className="flex items-center gap-3 text-sm">
+                <div className="w-28 font-medium flex items-center gap-1.5">
+                  <div
+                    className="w-2.5 h-2.5 rounded-full"
+                    style={{ backgroundColor: fallbackColor(pe.profileId) }}
+                  />
+                  {pe.profileId}
+                </div>
+                <span className={bad ? "text-red-400 font-semibold" : good ? "text-green-400 font-semibold" : "text-muted-foreground"}>
+                  {sign}{(pe.estimate * 100).toFixed(1)}pp
+                </span>
+                {pe.se > 0 && (
+                  <span className="text-xs text-muted-foreground">
+                    (SE: {(pe.se * 100).toFixed(1)}pp)
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Public component
 // ---------------------------------------------------------------------------
 
@@ -512,6 +723,17 @@ export function StatsPanel({ stats }: { stats: StatsResult }) {
           </CardContent>
         </Card>
       )}
+
+      {/* Cox PH */}
+      {stats.coxResult && <CoxCard result={stats.coxResult} />}
+
+      {/* Change-point detection */}
+      {stats.changePointSummaries.length > 0 && (
+        <ChangePointCard summaries={stats.changePointSummaries} />
+      )}
+
+      {/* Mixed-effects model */}
+      {stats.mixedEffects && <MixedEffectsCard result={stats.mixedEffects} />}
 
     </div>
   );

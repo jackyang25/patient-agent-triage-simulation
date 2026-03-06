@@ -48,13 +48,18 @@ function isStalled(messages: Message[]): boolean {
   return true;
 }
 
+export interface RunOptions {
+  maxTurns?: number;
+  callbacks?: RunnerCallbacks;
+}
+
 export async function runConversation(
   scenario: ClinicalScenario,
   profile: CommunicationProfile,
   agent: AgentAdapter,
-  callbacks?: RunnerCallbacks,
-  maxTurns: number = DEFAULT_MAX_TURNS,
+  options?: RunOptions,
 ): Promise<ConversationResult> {
+  const { maxTurns = DEFAULT_MAX_TURNS, callbacks } = options ?? {};
   const messages: Message[] = [];
   const tracker = new SymptomTracker(scenario.symptoms);
   let turnIndex = 0;

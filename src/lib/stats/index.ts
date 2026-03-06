@@ -12,4 +12,9 @@ export type {
   ProfileTemporalSummary,
   FailureModeCount,
   WeightedEstimate,
+  CoxResult,
+  CoxCoefficient,
+  ChangePointSummary,
+  MixedEffectsResult,
+  ProfileFixedEffect,
 } from "./types";

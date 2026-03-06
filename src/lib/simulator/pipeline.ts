@@ -23,7 +23,7 @@ export async function executeSimulation(
   maxTurns?: number,
 ): Promise<void> {
   const { trace, symptomDisclosure } = await runConversation(
-    scenario, profile, agent, undefined, maxTurns,
+    scenario, profile, agent, maxTurns ? { maxTurns } : undefined,
   );
   store.updateRun(runId, { status: "evaluating", trace });
 

@@ -113,6 +113,60 @@ export interface WeightedEstimate {
   weightedErrorRate: number;
 }
 
+// --- Cox proportional hazards ---
+
+export interface CoxCoefficient {
+  profileId: string;
+  /** log hazard ratio relative to baseline profile */
+  coefficient: number;
+  /** exp(coefficient) -- multiplicative effect on escalation rate */
+  hazardRatio: number;
+  se: number;
+  ciLower: number;
+  ciUpper: number;
+}
+
+export interface CoxResult {
+  baselineProfile: string;
+  coefficients: CoxCoefficient[];
+  n: number;
+  events: number;
+}
+
+// --- Change-point detection (aggregated by profile) ---
+
+export interface ChangePointSummary {
+  profileId: string;
+  n: number;
+  /** conversations where a meaningful trajectory shift was detected */
+  withChangePoint: number;
+  /** mean position of change point as fraction of conversation (0-1) */
+  meanPosition: number | null;
+  sdPosition: number | null;
+  meanShiftMagnitude: number | null;
+}
+
+// --- Mixed-effects model ---
+
+export interface ProfileFixedEffect {
+  profileId: string;
+  /** estimated effect on failure probability relative to baseline */
+  estimate: number;
+  se: number;
+}
+
+export interface MixedEffectsResult {
+  intercept: number;
+  profileEffects: ProfileFixedEffect[];
+  baselineProfile: string;
+  /** between-scenario variance in failure rates */
+  scenarioVariance: number;
+  residualVariance: number;
+  /** intraclass correlation: proportion of variance from scenario difficulty */
+  icc: number;
+  n: number;
+}
+
 // --- Top-level result ---
 
 export interface StatsResult {
@@ -124,6 +178,9 @@ export interface StatsResult {
   survivalCurves: KMCurve[];
   profileComparisons: ProfileComparison[];
   profileSummaries: ProfileTemporalSummary[];
+  coxResult: CoxResult | null;
+  changePointSummaries: ChangePointSummary[];
+  mixedEffects: MixedEffectsResult | null;
   totalRuns: number;
   runsWithTemporal: number;
 }

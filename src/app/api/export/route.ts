@@ -3,12 +3,7 @@ import { store } from "@/lib/store";
 import { SCENARIOS } from "@/lib/scenarios";
 import { PROFILES } from "@/lib/profiles";
 
-/**
- * Export all completed simulation runs as a flat JSON array
- * for consumption by the statistical harness.
- *
- * GET /api/export
- */
+/** GET /api/export — all completed runs as a flat JSON array. */
 export async function GET() {
   const runs = store.getAllRuns();
   const completed = runs.filter((r) => r.status === "completed" && r.evaluation);
