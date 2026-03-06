@@ -326,17 +326,71 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
       </section>
 
       {/* Temporal Analysis */}
-      {run.temporalFeatures && (
-        <TemporalFeaturesSection features={run.temporalFeatures} />
+      {run.status === "completed" && (
+        run.temporalFeatures ? (
+          <TemporalFeaturesSection features={run.temporalFeatures} />
+        ) : (
+          <section className="space-y-3">
+            <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
+              Temporal Analysis
+            </h2>
+            <Card>
+              <CardContent className="py-6 text-center">
+                <p className="text-sm text-muted-foreground">
+                  Temporal annotation failed for this run. Check server logs for details.
+                </p>
+              </CardContent>
+            </Card>
+          </section>
+        )
+      )}
+
+      {/* Validation */}
+      {run.status === "completed" && (
+        <section className="space-y-3">
+          <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
+            Conversation Validation
+          </h2>
+          <Card>
+            {run.validation ? (
+              <CardContent className="py-4 space-y-3">
+                <div className="flex items-center gap-3 text-sm">
+                  <Badge variant={run.validation.coherent ? "secondary" : "destructive"}>
+                    {run.validation.coherent ? "Coherent" : "Incoherent"}
+                  </Badge>
+                  <Badge variant={run.validation.onScript ? "secondary" : "destructive"}>
+                    {run.validation.onScript ? "On Script" : "Off Script"}
+                  </Badge>
+                  <Badge variant={run.validation.clinicallySubstantive ? "secondary" : "destructive"}>
+                    {run.validation.clinicallySubstantive ? "Substantive" : "Not Substantive"}
+                  </Badge>
+                </div>
+                {run.validation.issues.length > 0 && (
+                  <ul className="text-xs text-muted-foreground space-y-1">
+                    {run.validation.issues.map((issue, i) => (
+                      <li key={i}>{issue}</li>
+                    ))}
+                  </ul>
+                )}
+              </CardContent>
+            ) : (
+              <CardContent className="py-6 text-center">
+                <p className="text-sm text-muted-foreground">
+                  Validation unavailable for this run.
+                </p>
+              </CardContent>
+            )}
+          </Card>
+        </section>
       )}
 
       {/* Conversation Trace */}
-      {run.trace && (
-        <section className="space-y-3">
-          <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
-            Conversation Trace
-          </h2>
-          <Card>
+      <section className="space-y-3">
+        <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
+          Conversation Trace
+        </h2>
+        <Card>
+          {run.trace ? (
             <ScrollArea className="h-[500px]">
               <CardContent className="pt-4">
                 <ChatTrace
@@ -345,6 +399,32 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
                 />
               </CardContent>
             </ScrollArea>
+          ) : (
+            <CardContent className="py-6 text-center">
+              <p className="text-sm text-muted-foreground">
+                {isRunning ? "Conversation in progress..." : "No trace available."}
+              </p>
+            </CardContent>
+          )}
+        </Card>
+      </section>
+
+      {/* Aggregate stats pointer */}
+      {run.status === "completed" && (
+        <section className="space-y-3">
+          <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
+            Population-Level Analysis
+          </h2>
+          <Card>
+            <CardContent className="py-6 text-center space-y-2">
+              <p className="text-sm text-muted-foreground">
+                Survival curves, Cox proportional hazards, change-point detection, and mixed-effects models
+                are computed across multiple runs.
+              </p>
+              <Button asChild variant="outline" size="sm">
+                <Link href="/history">View Aggregate Results</Link>
+              </Button>
+            </CardContent>
           </Card>
         </section>
       )}
