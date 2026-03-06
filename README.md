@@ -12,8 +12,7 @@ Full design rationale in [`AGENTS.md`](AGENTS.md).
 
 ```bash
 npm install
-cp .env.local.example .env.local   # add your API key
-npm run dev                         # http://localhost:3000
+npm run dev   # http://localhost:3000
 ```
 
 Or with Docker:
@@ -22,13 +21,7 @@ Or with Docker:
 docker compose up --build
 ```
 
-### Environment
-
-| Variable | |
-|---|---|
-| `AI_PROVIDER` | `openai` or `anthropic` |
-| `OPENAI_API_KEY` | Required if using OpenAI |
-| `ANTHROPIC_API_KEY` | Required if using Anthropic |
+API keys are entered in the UI (nav bar). Each key is validated before saving. Keys are stored in `sessionStorage` (per-tab, never persisted server-side).
 
 ---
 
@@ -40,11 +33,13 @@ src/
   components/           UI
   lib/
     types.ts            shared types
+    session.ts          client-side session + credential management
+    request-context.ts  server-side header extraction (session, model)
     scenarios.ts        clinical scenarios (human-authored)
     profiles.ts         communication profiles (human-authored)
     rubrics.ts          escalation rubric definitions
-    ai.ts               LLM provider setup (OpenAI, Anthropic)
-    store.ts            file-backed run storage (.data/)
+    ai.ts               LLM provider setup + key validation
+    store.ts            session-scoped in-memory run storage
     simulator/
       patient.ts        LLM patient simulator
       agent.ts          built-in stub agent
@@ -65,17 +60,30 @@ src/
 
 ---
 
+## Session isolation
+
+Each browser tab gets an isolated session. Runs from one tab never appear in another.
+
+- **Session ID** -- random UUID per tab, stored in `sessionStorage`, sent as `X-Session-ID` header on every request.
+- **API keys** -- stored in `sessionStorage`, sent as request headers, never persisted on the server.
+- **Server store** -- in-memory `Map<sessionId, Map<runId, Run>>`. Abandoned sessions expire after 1 hour. Server restart clears everything.
+
+---
+
 ## API
 
 ```
-GET    /api/scenarios          scenarios, profiles, rubrics
-POST   /api/simulate           single run (scenario + profile + rubric)
-POST   /api/simulate/matrix    all scenario x profile combinations
-GET    /api/results/:id        run status + results
-GET    /api/runs               list all runs
-DELETE /api/runs               clear all runs
-GET    /api/export             completed runs as flat JSON
+POST   /api/config/validate     validate an API key (provider + key)
+GET    /api/scenarios            scenarios, profiles, rubrics
+POST   /api/simulate             single run (scenario + profile + rubric)
+POST   /api/simulate/matrix      all scenario x profile combinations
+GET    /api/results/:id          run status + results
+GET    /api/runs                 list all runs
+DELETE /api/runs                 clear all runs
+GET    /api/export               completed runs as flat JSON
 ```
+
+All routes except `/api/scenarios` and `/api/config/validate` require `X-Session-ID`. Simulation routes also require `X-AI-Provider` and `X-API-Key`.
 
 ---
 

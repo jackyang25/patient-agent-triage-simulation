@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { validateKey, type ProviderId } from "@/lib/ai";
+import { validateKey } from "@/lib/ai";
 
 const requestSchema = z.object({
   provider: z.enum(["openai", "anthropic"]),
@@ -20,11 +20,11 @@ export async function POST(request: Request) {
   }
 
   const { provider, apiKey } = parsed.data;
-  const valid = await validateKey(provider as ProviderId, apiKey);
+  const result = await validateKey(provider, apiKey);
 
-  if (!valid) {
+  if (!result.valid) {
     return NextResponse.json(
-      { valid: false, error: `Invalid ${provider} API key.` },
+      { valid: false, error: result.reason },
       { status: 401 },
     );
   }

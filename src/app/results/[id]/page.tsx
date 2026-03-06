@@ -10,7 +10,8 @@ import { Separator } from "@/components/ui/separator";
 import { ChatTrace } from "@/components/chat-trace";
 import { OUTCOME_VARIANT, FAILURE_MODES } from "@/lib/constants";
 import { apiFetch } from "@/lib/session";
-import type { SimulationRun, TemporalFeatures, EscalationResult } from "@/lib/types";
+import { MODELS } from "@/lib/ai";
+import type { SimulationRun, TemporalFeatures, EscalationResult, ModelConfig } from "@/lib/types";
 
 const STATUS_LABELS: Record<string, string> = {
   pending: "Pending",
@@ -127,6 +128,47 @@ function TemporalFeaturesSection({ features }: { features: TemporalFeatures }) {
         </CardContent>
       </Card>
     </section>
+  );
+}
+
+function modelLabel(id: string): string {
+  return MODELS.find((m) => m.id === id)?.label ?? id;
+}
+
+function ModelConfigRow({ config }: { config: ModelConfig }) {
+  const allSame = config.patient === config.validator && config.validator === config.annotator
+    && (!config.agent || config.agent === config.patient);
+
+  if (allSame) {
+    return (
+      <div className="text-xs text-muted-foreground">
+        <span>All pipeline roles: </span>
+        <code className="bg-muted px-1 rounded text-[11px]">{modelLabel(config.patient)}</code>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+      <div>
+        <span className="text-muted-foreground block mb-0.5">Patient</span>
+        <code className="bg-muted px-1 rounded text-[11px]">{modelLabel(config.patient)}</code>
+      </div>
+      <div>
+        <span className="text-muted-foreground block mb-0.5">Validator</span>
+        <code className="bg-muted px-1 rounded text-[11px]">{modelLabel(config.validator)}</code>
+      </div>
+      <div>
+        <span className="text-muted-foreground block mb-0.5">Annotator</span>
+        <code className="bg-muted px-1 rounded text-[11px]">{modelLabel(config.annotator)}</code>
+      </div>
+      {config.agent && (
+        <div>
+          <span className="text-muted-foreground block mb-0.5">Agent</span>
+          <code className="bg-muted px-1 rounded text-[11px]">{modelLabel(config.agent)}</code>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -251,7 +293,7 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
           Configuration
         </h2>
         <Card>
-          <CardContent className="py-4">
+          <CardContent className="py-4 space-y-4">
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
               <div>
                 <span className="text-muted-foreground">Scenario: </span>
@@ -278,6 +320,7 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
                 </>
               )}
             </div>
+            {run.modelConfig && <ModelConfigRow config={run.modelConfig} />}
           </CardContent>
         </Card>
       </section>

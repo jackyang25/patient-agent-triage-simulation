@@ -11,6 +11,7 @@ import type { WeightedEstimate } from "@/lib/stats";
 import { StatsPanel } from "@/components/stats-panel";
 import { OUTCOME_SHORT, OUTCOME_VARIANT } from "@/lib/constants";
 import { apiFetch } from "@/lib/session";
+import { MODELS } from "@/lib/ai";
 import type { SimulationRun, ClinicalScenario, CommunicationProfile } from "@/lib/types";
 
 // --- Components ---
@@ -272,45 +273,59 @@ export default function HistoryPage() {
           <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
             Individual Runs
           </h2>
-          {runs.map((run) => (
-            <Link key={run.id} href={`/results/${run.id}`}>
-              <Card className="hover:border-primary/50 transition-all cursor-pointer">
-                <CardContent className="py-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div>
-                        <p className="text-sm font-medium">{run.scenarioId}</p>
-                        <p className="text-xs text-muted-foreground">{run.profileId} / {run.adapterConfig.type}</p>
-                      </div>
-                      <Badge
-                        variant={
-                          run.status === "completed" ? "secondary" :
-                          run.status === "failed" ? "destructive" : "outline"
-                        }
-                      >
-                        {run.status}
-                      </Badge>
-                      {run.trace && (
-                        <span className="text-xs text-muted-foreground">
-                          {run.trace.totalTurns} turns
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-3">
-                      {run.evaluation && (
-                        <Badge variant={OUTCOME_VARIANT[run.evaluation.outcome]}>
-                          {OUTCOME_SHORT[run.evaluation.outcome]}
+          {runs.map((run) => {
+            const mc = run.modelConfig;
+            const modelSummary = mc
+              ? mc.patient === mc.validator && mc.validator === mc.annotator
+                ? MODELS.find((m) => m.id === mc.patient)?.label ?? mc.patient
+                : "mixed models"
+              : null;
+
+            return (
+              <Link key={run.id} href={`/results/${run.id}`}>
+                <Card className="hover:border-primary/50 transition-all cursor-pointer">
+                  <CardContent className="py-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div>
+                          <p className="text-sm font-medium">{run.scenarioId}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {run.profileId} / {run.adapterConfig.type}
+                            {modelSummary && (
+                              <span className="ml-1.5 text-muted-foreground/70">{modelSummary}</span>
+                            )}
+                          </p>
+                        </div>
+                        <Badge
+                          variant={
+                            run.status === "completed" ? "secondary" :
+                            run.status === "failed" ? "destructive" : "outline"
+                          }
+                        >
+                          {run.status}
                         </Badge>
-                      )}
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(run.startedAt).toLocaleString()}
-                      </span>
+                        {run.trace && (
+                          <span className="text-xs text-muted-foreground">
+                            {run.trace.totalTurns} turns
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3">
+                        {run.evaluation && (
+                          <Badge variant={OUTCOME_VARIANT[run.evaluation.outcome]}>
+                            {OUTCOME_SHORT[run.evaluation.outcome]}
+                          </Badge>
+                        )}
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(run.startedAt).toLocaleString()}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
+                  </CardContent>
+                </Card>
+              </Link>
+            );
+          })}
         </div>
       )}
     </div>

@@ -10,7 +10,9 @@ import type { ClinicalScenario, CommunicationProfile, Rubric } from "../types";
 
 export interface SimulationContext {
   sessionId: string;
-  model: LanguageModel;
+  patientModel: LanguageModel;
+  validatorModel: LanguageModel;
+  annotatorModel: LanguageModel;
   maxTurns?: number;
 }
 
@@ -29,10 +31,10 @@ export async function executeSimulation(
   agent: AgentAdapter,
   ctx: SimulationContext,
 ): Promise<void> {
-  const { sessionId, model, maxTurns } = ctx;
+  const { sessionId, patientModel, validatorModel, annotatorModel, maxTurns } = ctx;
 
   const { trace, symptomDisclosure } = await runConversation(
-    scenario, profile, agent, { maxTurns, model },
+    scenario, profile, agent, { maxTurns, model: patientModel },
   );
   store.updateRun(sessionId, runId, { status: "evaluating", trace });
 
@@ -41,13 +43,13 @@ export async function executeSimulation(
 
   let validation;
   try {
-    validation = await validateConversation(trace, scenario, profile, model);
+    validation = await validateConversation(trace, scenario, profile, validatorModel);
   } catch (err) {
     console.error(`Validation failed for run ${runId}:`, err);
   }
 
   try {
-    const { turnAnnotations } = await annotateConversation(trace, scenario, rubric, model);
+    const { turnAnnotations } = await annotateConversation(trace, scenario, rubric, annotatorModel);
     trace.turnAnnotations = turnAnnotations;
     const temporalFeatures = deriveTemporalFeatures(
       turnAnnotations, evaluation, informationExtractionRate,

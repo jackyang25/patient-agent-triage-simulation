@@ -148,6 +148,16 @@ export interface HttpAdapterConfig {
 
 export type AdapterConfig = StubAdapterConfig | HttpAdapterConfig;
 
+// --- Per-role model config (which LLM backs each pipeline stage) ---
+
+export interface ModelConfig {
+  patient: string;
+  validator: string;
+  annotator: string;
+  /** only meaningful for the built-in stub agent */
+  agent?: string;
+}
+
 // --- Simulation run ---
 
 export type SimulationStatus =
@@ -171,6 +181,8 @@ export interface SimulationRun {
   startedAt: string;
   completedAt?: string;
   error?: string;
+  /** which LLM model was used for each pipeline role */
+  modelConfig?: ModelConfig;
   /** groups runs that were launched together as a matrix */
   batchId?: string;
 }

@@ -21,7 +21,6 @@ interface SessionContextValue {
   provider: ProviderId | null;
   apiKey: string | null;
   isConfigured: boolean;
-  hasServerKeys: boolean;
   setCredentials: (provider: ProviderId, apiKey: string) => void;
   clearCredentials: () => void;
 }
@@ -33,19 +32,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [sessionId, setSessionId] = useState("");
   const [provider, setProvider] = useState<ProviderId | null>(null);
   const [apiKey, setApiKey] = useState<string | null>(null);
-  const [hasServerKeys, setHasServerKeys] = useState(false);
 
   useEffect(() => {
     setSessionId(getSessionId());
     const creds = getCredentials();
     setProvider(creds.provider);
     setApiKey(creds.apiKey);
-
-    fetch("/api/config")
-      .then((r) => r.json())
-      .then((data) => setHasServerKeys(data.hasServerKeys))
-      .catch(() => {})
-      .finally(() => setReady(true));
+    setReady(true);
   }, []);
 
   const handleSetCredentials = useCallback((p: ProviderId, k: string) => {
@@ -62,16 +55,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   if (!ready) return null;
 
-  const clientConfigured = !!provider && !!apiKey;
-
   return (
     <SessionContext.Provider
       value={{
         sessionId,
         provider,
         apiKey,
-        isConfigured: clientConfigured || hasServerKeys,
-        hasServerKeys,
+        isConfigured: !!provider && !!apiKey,
         setCredentials: handleSetCredentials,
         clearCredentials: handleClearCredentials,
       }}

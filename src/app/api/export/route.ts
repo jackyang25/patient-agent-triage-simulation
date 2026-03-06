@@ -37,6 +37,10 @@ export async function GET(request: Request) {
       decision_commitment_turn: r.temporalFeatures?.decisionCommitmentTurn ?? null,
       near_miss: r.temporalFeatures?.nearMiss ?? null,
       failure_mode: r.temporalFeatures?.failureMode ?? null,
+      model_patient: r.modelConfig?.patient ?? null,
+      model_validator: r.modelConfig?.validator ?? null,
+      model_annotator: r.modelConfig?.annotator ?? null,
+      model_agent: r.modelConfig?.agent ?? null,
     };
   });
 

@@ -12,14 +12,12 @@ function maskKey(key: string): string {
 }
 
 function KeySetup() {
-  const { provider, apiKey, hasServerKeys, setCredentials, clearCredentials } = useSession();
+  const { provider, apiKey, isConfigured, setCredentials, clearCredentials } = useSession();
   const [open, setOpen] = useState(false);
   const [formProvider, setFormProvider] = useState<ProviderId>(provider ?? "openai");
   const [formKey, setFormKey] = useState("");
   const [validating, setValidating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const hasClientKey = !!provider && !!apiKey;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -52,7 +50,7 @@ function KeySetup() {
     }
   }
 
-  if (!open && hasClientKey) {
+  if (!open && isConfigured) {
     return (
       <div className="flex items-center gap-2 text-xs">
         <span className="text-muted-foreground">
@@ -69,20 +67,6 @@ function KeySetup() {
           className="text-muted-foreground hover:text-destructive transition-colors underline underline-offset-2"
         >
           clear
-        </button>
-      </div>
-    );
-  }
-
-  if (!open && !hasClientKey && hasServerKeys) {
-    return (
-      <div className="flex items-center gap-2 text-xs">
-        <span className="text-muted-foreground">Using server keys</span>
-        <button
-          onClick={() => setOpen(true)}
-          className="text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2"
-        >
-          override
         </button>
       </div>
     );
@@ -109,11 +93,11 @@ function KeySetup() {
           <option value="anthropic">Anthropic</option>
         </select>
         <input
-          type="password"
+          type="text"
           placeholder="sk-..."
           value={formKey}
           onChange={(e) => { setFormKey(e.target.value); setError(null); }}
-          className="w-48 rounded-md border border-input bg-background px-2 py-1 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+          className="w-44 rounded-md border border-input bg-background px-2 py-1 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
           autoFocus
           disabled={validating}
         />

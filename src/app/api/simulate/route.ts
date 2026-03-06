@@ -7,20 +7,21 @@ import { getRubric } from "@/lib/rubrics";
 import { store } from "@/lib/store";
 import { executeSimulation } from "@/lib/simulator/pipeline";
 import { createAdapter, adapterConfigSchema } from "@/lib/simulator/factory";
-import { getSessionId, getModelFromRequest, getAIHeaders } from "@/lib/request-context";
-import type { SimulationRun } from "@/lib/types";
+import { getSessionId, getProviderFromRequest, getAIHeaders, buildRoleModels, modelConfigSchema } from "@/lib/request-context";
+import type { SimulationRun, ModelConfig } from "@/lib/types";
 
 const requestSchema = z.object({
   scenarioId: z.string(),
   profileId: z.string(),
   rubricId: z.string(),
   adapterConfig: adapterConfigSchema,
+  modelConfig: modelConfigSchema,
   maxTurns: z.number().min(4).max(30).optional(),
 });
 
 export async function POST(request: Request) {
   const sessionId = getSessionId(request);
-  const model = getModelFromRequest(request);
+  const { provider, apiKey } = getProviderFromRequest(request);
   const aiHeaders = getAIHeaders(request);
 
   const body = await request.json();
@@ -33,7 +34,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const { scenarioId, profileId, rubricId, adapterConfig, maxTurns } = parsed.data;
+  const { scenarioId, profileId, rubricId, adapterConfig, modelConfig, maxTurns } = parsed.data;
 
   const scenario = getScenario(scenarioId);
   if (!scenario) {
@@ -50,9 +51,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: `Rubric not found: ${rubricId}` }, { status: 404 });
   }
 
+  const { patientModel, validatorModel, annotatorModel } = buildRoleModels(provider, apiKey, modelConfig);
+
+  const agentModelId = modelConfig.agent ?? modelConfig.patient;
+  const agentHeaders = { ...aiHeaders, "x-ai-model": agentModelId };
+
   const url = new URL(request.url);
   const baseUrl = `${url.protocol}//${url.host}`;
-  const agent = createAdapter(adapterConfig, baseUrl, aiHeaders);
+  const agent = createAdapter(adapterConfig, baseUrl, agentHeaders);
 
   const run: SimulationRun = {
     id: uuidv4(),
@@ -60,13 +66,14 @@ export async function POST(request: Request) {
     profileId,
     rubricId,
     adapterConfig,
+    modelConfig: modelConfig as ModelConfig,
     status: "simulating",
     startedAt: new Date().toISOString(),
   };
   store.saveRun(sessionId, run);
 
   executeSimulation(run.id, scenario, profile, rubric, agent, {
-    sessionId, model, maxTurns,
+    sessionId, patientModel, validatorModel, annotatorModel, maxTurns,
   }).catch((err) => {
     store.updateRun(sessionId, run.id, {
       status: "failed",

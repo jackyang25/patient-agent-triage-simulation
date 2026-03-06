@@ -7,12 +7,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/components/session-provider";
 import { apiFetch } from "@/lib/session";
-import type { ClinicalScenario, CommunicationProfile, Rubric, AdapterType, AdapterConfig } from "@/lib/types";
+import { getModelsForProvider, MODELS } from "@/lib/ai";
+import type { ClinicalScenario, CommunicationProfile, Rubric, AdapterType, AdapterConfig, ModelConfig } from "@/lib/types";
 import { PromptPreview } from "@/components/prompt-preview";
 
 export default function ScenariosPage() {
   const router = useRouter();
-  const { isConfigured } = useSession();
+  const { isConfigured, provider } = useSession();
   const [scenarios, setScenarios] = useState<ClinicalScenario[]>([]);
   const [profiles, setProfiles] = useState<CommunicationProfile[]>([]);
   const [rubrics, setRubrics] = useState<Rubric[]>([]);
@@ -24,6 +25,23 @@ export default function ScenariosPage() {
   const [httpAuthHeader, setHttpAuthHeader] = useState("");
   const [launching, setLaunching] = useState(false);
   const [launchingMatrix, setLaunchingMatrix] = useState(false);
+
+  const availableModels = provider ? getModelsForProvider(provider) : MODELS;
+  const firstModel = availableModels[0]?.id ?? MODELS[0].id;
+
+  const [patientModel, setPatientModel] = useState(firstModel);
+  const [validatorModel, setValidatorModel] = useState(firstModel);
+  const [annotatorModel, setAnnotatorModel] = useState(firstModel);
+  const [agentModel, setAgentModel] = useState(firstModel);
+
+  // reset per-role models when provider changes
+  useEffect(() => {
+    const def = availableModels[0]?.id ?? MODELS[0].id;
+    setPatientModel(def);
+    setValidatorModel(def);
+    setAnnotatorModel(def);
+    setAgentModel(def);
+  }, [provider]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     apiFetch("/api/scenarios")
@@ -53,6 +71,15 @@ export default function ScenariosPage() {
     return { type: "stub" };
   }
 
+  function buildModelConfig(): ModelConfig {
+    return {
+      patient: patientModel,
+      validator: validatorModel,
+      annotator: annotatorModel,
+      ...(adapterType === "stub" ? { agent: agentModel } : {}),
+    };
+  }
+
   async function handleLaunch() {
     if (!selectedScenario || !selectedProfile) return;
     if (adapterType === "http" && !httpEndpoint) return;
@@ -66,6 +93,7 @@ export default function ScenariosPage() {
           profileId: selectedProfile,
           rubricId: selectedRubric,
           adapterConfig: buildAdapterConfig(),
+          modelConfig: buildModelConfig(),
         }),
       });
       if (!res.ok) {
@@ -91,6 +119,7 @@ export default function ScenariosPage() {
         body: JSON.stringify({
           rubricId: selectedRubric,
           adapterConfig: buildAdapterConfig(),
+          modelConfig: buildModelConfig(),
         }),
       });
       if (!res.ok) {
@@ -238,6 +267,44 @@ export default function ScenariosPage() {
         rubric={selectedRubricObj}
       />
 
+      {/* Pipeline Models */}
+      <section className="space-y-3">
+        <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
+          Pipeline Models
+        </h2>
+        <p className="text-xs text-muted-foreground">
+          Choose which LLM backs each pipeline stage.
+        </p>
+        <div className={`grid gap-4 ${adapterType === "stub" ? "sm:grid-cols-2 lg:grid-cols-4" : "sm:grid-cols-3"}`}>
+          <ModelSelect
+            label="Patient Simulator"
+            value={patientModel}
+            onChange={setPatientModel}
+            models={availableModels}
+          />
+          <ModelSelect
+            label="Validator"
+            value={validatorModel}
+            onChange={setValidatorModel}
+            models={availableModels}
+          />
+          <ModelSelect
+            label="Annotator"
+            value={annotatorModel}
+            onChange={setAnnotatorModel}
+            models={availableModels}
+          />
+          {adapterType === "stub" && (
+            <ModelSelect
+              label="Demo Agent"
+              value={agentModel}
+              onChange={setAgentModel}
+              models={availableModels}
+            />
+          )}
+        </div>
+      </section>
+
       {/* Agent Under Test */}
       <section className="space-y-3">
         <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
@@ -332,6 +399,33 @@ export default function ScenariosPage() {
                   : ""}
         </p>
       </div>
+    </div>
+  );
+}
+
+function ModelSelect({
+  label,
+  value,
+  onChange,
+  models,
+}: {
+  label: string;
+  value: string;
+  onChange: (id: string) => void;
+  models: { id: string; label: string }[];
+}) {
+  return (
+    <div className="space-y-1">
+      <label className="text-xs font-medium text-muted-foreground">{label}</label>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+      >
+        {models.map((m) => (
+          <option key={m.id} value={m.id}>{m.label}</option>
+        ))}
+      </select>
     </div>
   );
 }

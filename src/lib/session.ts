@@ -19,7 +19,12 @@ export function getSessionId(): string {
   return id;
 }
 
-export function getCredentials(): { provider: ProviderId | null; apiKey: string | null } {
+export interface Credentials {
+  provider: ProviderId | null;
+  apiKey: string | null;
+}
+
+export function getCredentials(): Credentials {
   return {
     provider: sessionStorage.getItem(PROVIDER_KEY) as ProviderId | null,
     apiKey: sessionStorage.getItem(API_KEY_KEY),

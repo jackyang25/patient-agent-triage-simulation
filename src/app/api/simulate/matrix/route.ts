@@ -8,12 +8,13 @@ import { getRubric } from "@/lib/rubrics";
 import { store } from "@/lib/store";
 import { executeSimulation } from "@/lib/simulator/pipeline";
 import { createAdapter, adapterConfigSchema } from "@/lib/simulator/factory";
-import { getSessionId, getModelFromRequest, getAIHeaders } from "@/lib/request-context";
-import type { SimulationRun, AdapterConfig, Rubric } from "@/lib/types";
+import { getSessionId, getProviderFromRequest, getAIHeaders, buildRoleModels, modelConfigSchema } from "@/lib/request-context";
+import type { SimulationRun, AdapterConfig, Rubric, ModelConfig } from "@/lib/types";
 
 const requestSchema = z.object({
   rubricId: z.string(),
   adapterConfig: adapterConfigSchema,
+  modelConfig: modelConfigSchema,
   maxTurns: z.number().min(4).max(30).optional(),
   concurrency: z.number().min(1).max(10).optional(),
 });
@@ -22,15 +23,17 @@ interface MatrixContext {
   rubric: Rubric;
   adapterConfig: AdapterConfig;
   baseUrl: string;
-  aiHeaders: Record<string, string>;
+  agentHeaders: Record<string, string>;
   sessionId: string;
-  model: LanguageModel;
+  patientModel: LanguageModel;
+  validatorModel: LanguageModel;
+  annotatorModel: LanguageModel;
   maxTurns: number | undefined;
 }
 
 export async function POST(request: Request) {
   const sessionId = getSessionId(request);
-  const model = getModelFromRequest(request);
+  const { provider, apiKey } = getProviderFromRequest(request);
   const aiHeaders = getAIHeaders(request);
 
   const body = await request.json();
@@ -43,12 +46,17 @@ export async function POST(request: Request) {
     );
   }
 
-  const { rubricId, adapterConfig, maxTurns, concurrency = 3 } = parsed.data;
+  const { rubricId, adapterConfig, modelConfig, maxTurns, concurrency = 3 } = parsed.data;
 
   const rubric = getRubric(rubricId);
   if (!rubric) {
     return NextResponse.json({ error: `Rubric not found: ${rubricId}` }, { status: 404 });
   }
+
+  const { patientModel, validatorModel, annotatorModel } = buildRoleModels(provider, apiKey, modelConfig);
+
+  const agentModelId = modelConfig.agent ?? modelConfig.patient;
+  const agentHeaders = { ...aiHeaders, "x-ai-model": agentModelId };
 
   const url = new URL(request.url);
   const baseUrl = `${url.protocol}//${url.host}`;
@@ -64,6 +72,7 @@ export async function POST(request: Request) {
         profileId: profile.id,
         rubricId,
         adapterConfig,
+        modelConfig: modelConfig as ModelConfig,
         status: "pending",
         startedAt: new Date().toISOString(),
         batchId,
@@ -73,7 +82,10 @@ export async function POST(request: Request) {
     }
   }
 
-  const ctx: MatrixContext = { rubric, adapterConfig, baseUrl, aiHeaders, sessionId, model, maxTurns };
+  const ctx: MatrixContext = {
+    rubric, adapterConfig, baseUrl, agentHeaders, sessionId,
+    patientModel, validatorModel, annotatorModel, maxTurns,
+  };
   runMatrix(runs, ctx, concurrency).catch((err) => {
     console.error("Matrix run failed:", err);
   });
@@ -104,7 +116,10 @@ async function runMatrix(runs: SimulationRun[], ctx: MatrixContext, concurrency:
 }
 
 async function runSingle(run: SimulationRun, ctx: MatrixContext) {
-  const { rubric, adapterConfig, baseUrl, aiHeaders, sessionId, model, maxTurns } = ctx;
+  const {
+    rubric, adapterConfig, baseUrl, agentHeaders, sessionId,
+    patientModel, validatorModel, annotatorModel, maxTurns,
+  } = ctx;
 
   const scenario = getScenario(run.scenarioId);
   const profile = getProfile(run.profileId);
@@ -119,9 +134,9 @@ async function runSingle(run: SimulationRun, ctx: MatrixContext) {
 
   try {
     store.updateRun(sessionId, run.id, { status: "simulating" });
-    const agent = createAdapter(adapterConfig, baseUrl, aiHeaders);
+    const agent = createAdapter(adapterConfig, baseUrl, agentHeaders);
     await executeSimulation(run.id, scenario, profile, rubric, agent, {
-      sessionId, model, maxTurns,
+      sessionId, patientModel, validatorModel, annotatorModel, maxTurns,
     });
   } catch (err) {
     store.updateRun(sessionId, run.id, {
