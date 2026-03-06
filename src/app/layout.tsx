@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AgentEval — HIV Escalation Testing",
-  description: "Test whether patient-facing HIV health agents escalate correctly across varied communication styles",
+  title: "PATS — Patient-Agent Triage Simulation",
+  description: "Evaluate whether patient-facing health agents escalate correctly across varied communication styles",
 };
 
 export default function RootLayout({

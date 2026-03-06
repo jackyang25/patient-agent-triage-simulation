@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { ClinicalScenario, CommunicationProfile, Rubric, AdapterType, AdapterConfig } from "@/lib/types";
+import { PromptPreview } from "@/components/prompt-preview";
 
 export default function ScenariosPage() {
   const router = useRouter();
@@ -99,6 +100,10 @@ export default function ScenariosPage() {
     }
   }
 
+  const selectedScenarioObj = scenarios.find((sc) => sc.id === selectedScenario) ?? null;
+  const selectedProfileObj = profiles.find((p) => p.id === selectedProfile) ?? null;
+  const selectedRubricObj = rubrics.find((r) => r.id === selectedRubric) ?? null;
+
   const canLaunch = selectedScenario && selectedProfile && selectedRubric && (adapterType === "stub" || httpEndpoint);
   const canLaunchMatrix = selectedRubric && (adapterType === "stub" || httpEndpoint);
 
@@ -107,7 +112,7 @@ export default function ScenariosPage() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Run Simulation</h1>
         <p className="text-muted-foreground mt-1">
-          Pick an HIV clinical scenario and communication profile, then run against an agent.
+          Pick a clinical scenario and communication profile, then run against an agent.
         </p>
       </div>
 
@@ -222,6 +227,13 @@ export default function ScenariosPage() {
           ))}
         </div>
       </section>
+
+      {/* Prompt Preview */}
+      <PromptPreview
+        scenario={selectedScenarioObj}
+        profile={selectedProfileObj}
+        rubric={selectedRubricObj}
+      />
 
       {/* Agent Under Test */}
       <section className="space-y-3">

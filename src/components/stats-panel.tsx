@@ -512,6 +512,7 @@ export function StatsPanel({ stats }: { stats: StatsResult }) {
           </CardContent>
         </Card>
       )}
+
     </div>
   );
 }
