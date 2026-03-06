@@ -5,11 +5,14 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useSession } from "@/components/session-provider";
+import { apiFetch } from "@/lib/session";
 import type { ClinicalScenario, CommunicationProfile, Rubric, AdapterType, AdapterConfig } from "@/lib/types";
 import { PromptPreview } from "@/components/prompt-preview";
 
 export default function ScenariosPage() {
   const router = useRouter();
+  const { isConfigured } = useSession();
   const [scenarios, setScenarios] = useState<ClinicalScenario[]>([]);
   const [profiles, setProfiles] = useState<CommunicationProfile[]>([]);
   const [rubrics, setRubrics] = useState<Rubric[]>([]);
@@ -23,7 +26,7 @@ export default function ScenariosPage() {
   const [launchingMatrix, setLaunchingMatrix] = useState(false);
 
   useEffect(() => {
-    fetch("/api/scenarios")
+    apiFetch("/api/scenarios")
       .then((r) => {
         if (!r.ok) throw new Error(`Failed to load scenarios: ${r.status}`);
         return r.json();
@@ -55,7 +58,7 @@ export default function ScenariosPage() {
     if (adapterType === "http" && !httpEndpoint) return;
     setLaunching(true);
     try {
-      const res = await fetch("/api/simulate", {
+      const res = await apiFetch("/api/simulate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -82,7 +85,7 @@ export default function ScenariosPage() {
     if (adapterType === "http" && !httpEndpoint) return;
     setLaunchingMatrix(true);
     try {
-      const res = await fetch("/api/simulate/matrix", {
+      const res = await apiFetch("/api/simulate/matrix", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -104,8 +107,8 @@ export default function ScenariosPage() {
   const selectedProfileObj = profiles.find((p) => p.id === selectedProfile) ?? null;
   const selectedRubricObj = rubrics.find((r) => r.id === selectedRubric) ?? null;
 
-  const canLaunch = selectedScenario && selectedProfile && selectedRubric && (adapterType === "stub" || httpEndpoint);
-  const canLaunchMatrix = selectedRubric && (adapterType === "stub" || httpEndpoint);
+  const canLaunch = isConfigured && selectedScenario && selectedProfile && selectedRubric && (adapterType === "stub" || httpEndpoint);
+  const canLaunchMatrix = isConfigured && selectedRubric && (adapterType === "stub" || httpEndpoint);
 
   return (
     <div className="space-y-8">
@@ -318,13 +321,15 @@ export default function ScenariosPage() {
           </Button>
         </div>
         <p className="text-sm text-muted-foreground">
-          {!canLaunch && (!selectedScenario || !selectedProfile)
-            ? "Select a scenario and profile for a single run, or run the full matrix across all combinations."
-            : !canLaunch && adapterType === "http"
-              ? "Enter the agent endpoint URL."
-              : canLaunchMatrix
-                ? `Full matrix runs all ${scenarios.length * profiles.length} scenario × profile combinations and shows aggregate results.`
-                : ""}
+          {!isConfigured
+            ? "Set your API key in the nav bar to enable simulations."
+            : !canLaunch && (!selectedScenario || !selectedProfile)
+              ? "Select a scenario and profile for a single run, or run the full matrix across all combinations."
+              : !canLaunch && adapterType === "http"
+                ? "Enter the agent endpoint URL."
+                : canLaunchMatrix
+                  ? `Full matrix runs all ${scenarios.length * profiles.length} scenario × profile combinations and shows aggregate results.`
+                  : ""}
         </p>
       </div>
     </div>

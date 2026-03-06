@@ -1,6 +1,5 @@
-import { generateObject } from "ai";
+import { generateObject, type LanguageModel } from "ai";
 import { z } from "zod";
-import { getModel } from "../ai";
 import type {
   ClinicalScenario,
   ConversationTrace,
@@ -134,6 +133,7 @@ export async function annotateConversation(
   trace: ConversationTrace,
   scenario: ClinicalScenario,
   rubric: Rubric,
+  model: LanguageModel,
 ): Promise<AnnotationResult> {
   const escalationTurn =
     trace.terminationReason === "escalation"
@@ -153,7 +153,7 @@ export async function annotateConversation(
   const schema = buildSchema(rubric);
 
   const { object } = await generateObject({
-    model: getModel(),
+    model,
     schema,
     system: buildSystemPrompt(scenario, rubric),
     prompt: transcript,

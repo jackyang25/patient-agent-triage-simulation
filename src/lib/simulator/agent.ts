@@ -1,6 +1,5 @@
-import { generateText, tool, stepCountIs } from "ai";
+import { generateText, tool, stepCountIs, type LanguageModel } from "ai";
 import { z } from "zod";
-import { getModel } from "../ai";
 import type { Message } from "../types";
 import type { AgentAdapter, AgentResponse } from "./adapter";
 
@@ -26,6 +25,8 @@ When you determine the patient needs human medical attention, use the escalateTo
 - You are uncertain about the severity of their situation`;
 
 export class StubAgentAdapter implements AgentAdapter {
+  constructor(private model: LanguageModel) {}
+
   async respond(
     conversationHistory: Message[],
     _turnIndex: number,
@@ -41,7 +42,7 @@ export class StubAgentAdapter implements AgentAdapter {
     let escalated = false;
 
     const result = await generateText({
-      model: getModel(),
+      model: this.model,
       system: AGENT_SYSTEM_PROMPT,
       messages,
       tools: {

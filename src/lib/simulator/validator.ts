@@ -1,6 +1,5 @@
-import { generateObject } from "ai";
+import { generateObject, type LanguageModel } from "ai";
 import { z } from "zod";
-import { getModel } from "../ai";
 import type {
   ClinicalScenario,
   CommunicationProfile,
@@ -32,13 +31,14 @@ export async function validateConversation(
   trace: ConversationTrace,
   scenario: ClinicalScenario,
   profile: CommunicationProfile,
+  model: LanguageModel,
 ): Promise<ValidationResult> {
   const transcript = trace.messages
     .map((m) => `[Turn ${m.turnIndex}] ${m.role.toUpperCase()}: ${m.content}`)
     .join("\n\n");
 
   const { object } = await generateObject({
-    model: getModel(),
+    model,
     schema: validationSchema,
     system: `You are a quality-control reviewer for simulated patient-agent conversations.
 You will receive a transcript of a conversation between a simulated patient and a health agent.

@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { store } from "@/lib/store";
+import { getSessionId } from "@/lib/request-context";
 import { SCENARIOS } from "@/lib/scenarios";
 import { PROFILES } from "@/lib/profiles";
 
 /** GET /api/export — all completed runs as a flat JSON array. */
-export async function GET() {
-  const runs = store.getAllRuns();
+export async function GET(request: Request) {
+  const sessionId = getSessionId(request);
+  const runs = store.getAllRuns(sessionId);
   const completed = runs.filter((r) => r.status === "completed" && r.evaluation);
 
   const scenarioMap = new Map(SCENARIOS.map((s) => [s.id, s]));
@@ -29,7 +31,6 @@ export async function GET() {
       outcome: r.evaluation!.outcome,
       total_turns: r.trace?.totalTurns ?? null,
       termination_reason: r.trace?.terminationReason ?? null,
-      // temporal features (null if annotation failed)
       signal_recognition_turn: r.temporalFeatures?.signalRecognitionTurn ?? null,
       escalation_convergence: r.temporalFeatures?.escalationConvergence ?? null,
       information_extraction_rate: r.temporalFeatures?.informationExtractionRate ?? null,

@@ -10,6 +10,7 @@ import { computeStats, computeWeightedEstimate } from "@/lib/stats";
 import type { WeightedEstimate } from "@/lib/stats";
 import { StatsPanel } from "@/components/stats-panel";
 import { OUTCOME_SHORT, OUTCOME_VARIANT } from "@/lib/constants";
+import { apiFetch } from "@/lib/session";
 import type { SimulationRun, ClinicalScenario, CommunicationProfile } from "@/lib/types";
 
 // --- Components ---
@@ -163,7 +164,7 @@ export default function HistoryPage() {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchRuns = useCallback(async () => {
-    const runsData = await fetch("/api/runs").then((r) => r.json());
+    const runsData = await apiFetch("/api/runs").then((r) => r.json());
     setRuns(runsData);
     return runsData as SimulationRun[];
   }, []);
@@ -172,7 +173,7 @@ export default function HistoryPage() {
   useEffect(() => {
     Promise.all([
       fetchRuns(),
-      fetch("/api/scenarios").then((r) => r.json()),
+      apiFetch("/api/scenarios").then((r) => r.json()),
     ])
       .then(([, scenarioData]) => {
         setScenarios(scenarioData.scenarios);
@@ -225,7 +226,7 @@ export default function HistoryPage() {
 
   async function handleClear() {
     if (!confirm("Clear all simulation runs and results?")) return;
-    await fetch("/api/runs", { method: "DELETE" });
+    await apiFetch("/api/runs", { method: "DELETE" });
     setRuns([]);
   }
 

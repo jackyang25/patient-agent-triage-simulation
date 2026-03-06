@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { StubAgentAdapter } from "@/lib/simulator/agent";
+import { getModelFromRequest } from "@/lib/request-context";
 import type { Message } from "@/lib/types";
 
 const requestSchema = z.object({
@@ -12,9 +13,8 @@ const requestSchema = z.object({
   ),
 });
 
-const agent = new StubAgentAdapter();
-
 export async function POST(request: Request) {
+  const model = getModelFromRequest(request);
   const body = await request.json();
 
   const parsed = requestSchema.safeParse(body);
@@ -35,6 +35,8 @@ export async function POST(request: Request) {
     content: m.content,
     turnIndex: i,
   }));
+
+  const agent = new StubAgentAdapter(model);
 
   try {
     const response = await agent.respond(messages, messages.length);

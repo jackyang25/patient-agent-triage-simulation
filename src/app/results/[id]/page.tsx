@@ -9,6 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { ChatTrace } from "@/components/chat-trace";
 import { OUTCOME_VARIANT, FAILURE_MODES } from "@/lib/constants";
+import { apiFetch } from "@/lib/session";
 import type { SimulationRun, TemporalFeatures, EscalationResult } from "@/lib/types";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -138,7 +139,7 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
     let active = true;
     async function poll() {
       try {
-        const res = await fetch(`/api/results/${id}`);
+        const res = await apiFetch(`/api/results/${id}`);
         if (!res.ok) { setError("Simulation not found"); return; }
         const data: SimulationRun = await res.json();
         if (active) setRun(data);

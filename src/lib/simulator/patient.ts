@@ -1,5 +1,4 @@
-import { generateText } from "ai";
-import { getModel } from "../ai";
+import { generateText, type LanguageModel } from "ai";
 import type { ClinicalScenario, CommunicationProfile, Message } from "../types";
 import type { SymptomDisclosureState } from "./tracker";
 
@@ -228,7 +227,8 @@ export async function generatePatientMessage(
   conversationHistory: Message[],
   isFirstTurn: boolean,
   maxTurns: number = 12,
-  symptomState?: SymptomDisclosureState,
+  symptomState: SymptomDisclosureState | undefined,
+  model: LanguageModel,
 ): Promise<string> {
   const system = buildSystemPrompt(scenario, profile);
   const stage = getStage(conversationHistory.length, maxTurns);
@@ -241,7 +241,7 @@ export async function generatePatientMessage(
         "\n\nIMPORTANT: Your previous attempt was too similar to something you already said. Say something DIFFERENT.";
 
     const result = await generateText({
-      model: getModel(),
+      model,
       system,
       prompt,
       temperature: 0.7,
@@ -257,7 +257,7 @@ export async function generatePatientMessage(
   }
 
   const fallback = await generateText({
-    model: getModel(),
+    model,
     system,
     prompt: "Respond briefly to the agent. One sentence. Don't repeat anything you said before.",
     temperature: 0.5,

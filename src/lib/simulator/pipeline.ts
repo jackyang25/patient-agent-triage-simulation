@@ -1,3 +1,4 @@
+import type { LanguageModel } from "ai";
 import { store } from "../store";
 import { runConversation } from "./runner";
 import { evaluateEscalation } from "./evaluator";
@@ -6,6 +7,12 @@ import { deriveTemporalFeatures } from "./temporal";
 import { validateConversation } from "./validator";
 import type { AgentAdapter } from "./adapter";
 import type { ClinicalScenario, CommunicationProfile, Rubric } from "../types";
+
+export interface SimulationContext {
+  sessionId: string;
+  model: LanguageModel;
+  maxTurns?: number;
+}
 
 /**
  * Full simulation pipeline: conversation -> evaluation -> validation -> annotation -> temporal features.
@@ -20,30 +27,32 @@ export async function executeSimulation(
   profile: CommunicationProfile,
   rubric: Rubric,
   agent: AgentAdapter,
-  maxTurns?: number,
+  ctx: SimulationContext,
 ): Promise<void> {
+  const { sessionId, model, maxTurns } = ctx;
+
   const { trace, symptomDisclosure } = await runConversation(
-    scenario, profile, agent, maxTurns ? { maxTurns } : undefined,
+    scenario, profile, agent, { maxTurns, model },
   );
-  store.updateRun(runId, { status: "evaluating", trace });
+  store.updateRun(sessionId, runId, { status: "evaluating", trace });
 
   const evaluation = evaluateEscalation(trace, scenario);
   const informationExtractionRate = symptomDisclosure.disclosureRate;
 
   let validation;
   try {
-    validation = await validateConversation(trace, scenario, profile);
+    validation = await validateConversation(trace, scenario, profile, model);
   } catch (err) {
     console.error(`Validation failed for run ${runId}:`, err);
   }
 
   try {
-    const { turnAnnotations } = await annotateConversation(trace, scenario, rubric);
+    const { turnAnnotations } = await annotateConversation(trace, scenario, rubric, model);
     trace.turnAnnotations = turnAnnotations;
     const temporalFeatures = deriveTemporalFeatures(
       turnAnnotations, evaluation, informationExtractionRate,
     );
-    store.updateRun(runId, {
+    store.updateRun(sessionId, runId, {
       status: "completed",
       trace,
       evaluation,
@@ -53,7 +62,7 @@ export async function executeSimulation(
     });
   } catch (err) {
     console.error(`Temporal annotation failed for run ${runId}:`, err);
-    store.updateRun(runId, {
+    store.updateRun(sessionId, runId, {
       status: "completed",
       evaluation,
       validation,

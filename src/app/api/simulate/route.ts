@@ -7,6 +7,7 @@ import { getRubric } from "@/lib/rubrics";
 import { store } from "@/lib/store";
 import { executeSimulation } from "@/lib/simulator/pipeline";
 import { createAdapter, adapterConfigSchema } from "@/lib/simulator/factory";
+import { getSessionId, getModelFromRequest, getAIHeaders } from "@/lib/request-context";
 import type { SimulationRun } from "@/lib/types";
 
 const requestSchema = z.object({
@@ -18,6 +19,10 @@ const requestSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const sessionId = getSessionId(request);
+  const model = getModelFromRequest(request);
+  const aiHeaders = getAIHeaders(request);
+
   const body = await request.json();
 
   const parsed = requestSchema.safeParse(body);
@@ -47,7 +52,7 @@ export async function POST(request: Request) {
 
   const url = new URL(request.url);
   const baseUrl = `${url.protocol}//${url.host}`;
-  const agent = createAdapter(adapterConfig, baseUrl);
+  const agent = createAdapter(adapterConfig, baseUrl, aiHeaders);
 
   const run: SimulationRun = {
     id: uuidv4(),
@@ -58,10 +63,12 @@ export async function POST(request: Request) {
     status: "simulating",
     startedAt: new Date().toISOString(),
   };
-  store.saveRun(run);
+  store.saveRun(sessionId, run);
 
-  executeSimulation(run.id, scenario, profile, rubric, agent, maxTurns).catch((err) => {
-    store.updateRun(run.id, {
+  executeSimulation(run.id, scenario, profile, rubric, agent, {
+    sessionId, model, maxTurns,
+  }).catch((err) => {
+    store.updateRun(sessionId, run.id, {
       status: "failed",
       error: err instanceof Error ? err.message : String(err),
       completedAt: new Date().toISOString(),

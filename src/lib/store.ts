@@ -1,73 +1,72 @@
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
-import { join } from "path";
 import type { SimulationRun } from "./types";
 
-const DATA_DIR = join(process.cwd(), ".data");
-const RUNS_FILE = join(DATA_DIR, "runs.json");
+const SESSION_TTL_MS = 60 * 60 * 1000; // 1 hour
+const SWEEP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
-function ensureDir() {
-  if (!existsSync(DATA_DIR)) {
-    mkdirSync(DATA_DIR, { recursive: true });
-  }
+interface SessionBucket {
+  runs: Map<string, SimulationRun>;
+  lastAccess: number;
 }
 
-function loadFromDisk(): Map<string, SimulationRun> {
-  ensureDir();
-  if (!existsSync(RUNS_FILE)) return new Map();
-  try {
-    const raw = readFileSync(RUNS_FILE, "utf-8");
-    const arr: SimulationRun[] = JSON.parse(raw);
-    return new Map(arr.map((r) => [r.id, r]));
-  } catch {
-    return new Map();
-  }
-}
-
-function saveToDisk(runs: Map<string, SimulationRun>) {
-  ensureDir();
-  const arr = Array.from(runs.values());
-  writeFileSync(RUNS_FILE, JSON.stringify(arr, null, 2));
-}
-
-// survive Next.js dev-mode hot reloads by pinning to globalThis
 const globalStore = globalThis as unknown as {
-  __simulationRuns?: Map<string, SimulationRun>;
+  __sessions?: Map<string, SessionBucket>;
+  __sweepTimer?: ReturnType<typeof setInterval>;
 };
 
-if (!globalStore.__simulationRuns) {
-  globalStore.__simulationRuns = loadFromDisk();
+if (!globalStore.__sessions) {
+  globalStore.__sessions = new Map();
 }
 
-const runs = globalStore.__simulationRuns;
+if (!globalStore.__sweepTimer) {
+  globalStore.__sweepTimer = setInterval(() => {
+    const now = Date.now();
+    for (const [id, bucket] of globalStore.__sessions!) {
+      if (now - bucket.lastAccess > SESSION_TTL_MS) {
+        globalStore.__sessions!.delete(id);
+      }
+    }
+  }, SWEEP_INTERVAL_MS);
+}
+
+const sessions = globalStore.__sessions;
+
+function getBucket(sessionId: string): SessionBucket {
+  let bucket = sessions.get(sessionId);
+  if (!bucket) {
+    bucket = { runs: new Map(), lastAccess: Date.now() };
+    sessions.set(sessionId, bucket);
+  } else {
+    bucket.lastAccess = Date.now();
+  }
+  return bucket;
+}
 
 export const store = {
-  getRun(id: string): SimulationRun | undefined {
-    return runs.get(id);
+  getRun(sessionId: string, id: string): SimulationRun | undefined {
+    return getBucket(sessionId).runs.get(id);
   },
 
-  getAllRuns(): SimulationRun[] {
-    return Array.from(runs.values()).sort(
+  getAllRuns(sessionId: string): SimulationRun[] {
+    return Array.from(getBucket(sessionId).runs.values()).sort(
       (a, b) =>
         new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
     );
   },
 
-  saveRun(run: SimulationRun): void {
-    runs.set(run.id, run);
-    saveToDisk(runs);
+  saveRun(sessionId: string, run: SimulationRun): void {
+    getBucket(sessionId).runs.set(run.id, run);
   },
 
-  updateRun(id: string, patch: Partial<SimulationRun>): SimulationRun {
-    const existing = runs.get(id);
+  updateRun(sessionId: string, id: string, patch: Partial<SimulationRun>): SimulationRun {
+    const bucket = getBucket(sessionId);
+    const existing = bucket.runs.get(id);
     if (!existing) throw new Error(`Run not found: ${id}`);
     const updated = { ...existing, ...patch };
-    runs.set(id, updated);
-    saveToDisk(runs);
+    bucket.runs.set(id, updated);
     return updated;
   },
 
-  clear(): void {
-    runs.clear();
-    saveToDisk(runs);
+  clear(sessionId: string): void {
+    getBucket(sessionId).runs.clear();
   },
 };

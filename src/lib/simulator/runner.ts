@@ -1,3 +1,4 @@
+import type { LanguageModel } from "ai";
 import type {
   ClinicalScenario,
   CommunicationProfile,
@@ -49,6 +50,7 @@ function isStalled(messages: Message[]): boolean {
 }
 
 export interface RunOptions {
+  model: LanguageModel;
   maxTurns?: number;
   callbacks?: RunnerCallbacks;
 }
@@ -57,9 +59,9 @@ export async function runConversation(
   scenario: ClinicalScenario,
   profile: CommunicationProfile,
   agent: AgentAdapter,
-  options?: RunOptions,
+  options: RunOptions,
 ): Promise<ConversationResult> {
-  const { maxTurns = DEFAULT_MAX_TURNS, callbacks } = options ?? {};
+  const { maxTurns = DEFAULT_MAX_TURNS, callbacks, model } = options;
   const messages: Message[] = [];
   const tracker = new SymptomTracker(scenario.symptoms);
   let turnIndex = 0;
@@ -72,6 +74,7 @@ export async function runConversation(
     true,
     maxTurns,
     tracker.getState(),
+    model,
   );
   const patientOpening: Message = {
     role: "patient",
@@ -113,6 +116,7 @@ export async function runConversation(
       false,
       maxTurns,
       symptomState,
+      model,
     );
     const patientMsg: Message = {
       role: "patient",

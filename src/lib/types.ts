@@ -144,8 +144,6 @@ export interface HttpAdapterConfig {
   type: "http";
   endpoint: string;
   headers?: Record<string, string>;
-  /** keywords/patterns in agent response that signal escalation */
-  escalationPatterns?: string[];
 }
 
 export type AdapterConfig = StubAdapterConfig | HttpAdapterConfig;
