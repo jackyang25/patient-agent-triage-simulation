@@ -36,10 +36,10 @@ function buildSystemPrompt(
 ): string {
   const openingCount = OPENING_REVEAL[profile.type] ?? 1;
 
-  return `You are a real patient texting an HIV health service chatbot. Sound like a REAL PERSON, not an AI.
+  return `You are a real patient texting a health service chatbot. Sound like a REAL PERSON, not an AI.
 
 ## Who You Are
-You are a patient using an HIV care support service.
+You are a patient using a health support service.
 You have: ${scenario.symptoms.join(", ")}
 Your actual condition (you don't know this clinical name): ${scenario.condition}
 ${scenario.historyNotes ? `History: ${scenario.historyNotes}` : ""}
@@ -113,7 +113,7 @@ function buildTurnPrompt(
   symptomState?: SymptomDisclosureState,
 ): string {
   if (isFirstTurn) {
-    return "You're opening a chat with an HIV health service. Send your first message — mention why you're reaching out, casually. One sentence, like a real text.";
+    return "You're opening a chat with a health service. Send your first message — mention why you're reaching out, casually. One sentence, like a real text.";
   }
 
   const agentSaid = lastAgentMessage(history);

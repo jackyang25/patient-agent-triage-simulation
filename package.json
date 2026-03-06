@@ -1,5 +1,5 @@
 {
-  "name": "simulated-patient-agent-evaluation",
+  "name": "patient-agent-triage-simulation",
   "version": "0.1.0",
   "private": true,
   "scripts": {

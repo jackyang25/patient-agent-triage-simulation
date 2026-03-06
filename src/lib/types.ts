@@ -15,10 +15,8 @@ export interface ClinicalScenario {
    * Used to weight failure rates. Optional; unweighted if omitted.
    */
   prevalence?: number;
-  /** real patient phrasings from a seed conversation */
+  /** real patient phrasings to ground the simulator */
   examples?: string[];
-  /** traces back to the source seed conversation */
-  seedId?: string;
 }
 
 // --- Communication profile (how the patient talks) ---
@@ -44,8 +42,6 @@ export interface CommunicationProfile {
   prevalence?: number;
   /** real messages demonstrating this communication style */
   examples?: string[];
-  /** traces back to the source seed conversation */
-  seedId?: string;
 }
 
 // --- Conversation types ---
