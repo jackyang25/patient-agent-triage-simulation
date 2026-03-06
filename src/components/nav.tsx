@@ -130,16 +130,27 @@ export function Nav() {
         </Link>
         <div className="flex items-center gap-6">
           <KeySetup />
-          <nav className="flex items-center gap-6 text-sm">
+          <nav className="flex items-center gap-4 text-sm">
             <Link href="/" className="text-muted-foreground hover:text-foreground transition-colors">Run</Link>
             <Link href="/history" className="text-muted-foreground hover:text-foreground transition-colors">Results</Link>
+
+            <div className="h-4 w-px bg-border" />
+
             <a
               href="https://dark-cat-b09.notion.site/Patient-Agent-Triage-Simulation-PATS-312f42d22c17808ca8ded1e5b74b1a0e?pvs=74"
               target="_blank"
               rel="noopener noreferrer"
               className="text-muted-foreground hover:text-foreground transition-colors"
             >
-              Docs
+              docs
+            </a>
+            <a
+              href="https://github.com/jackyang25?tab=repositories"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              github
             </a>
           </nav>
         </div>

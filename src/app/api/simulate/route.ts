@@ -4,6 +4,7 @@ import { z } from "zod";
 import { getScenario } from "@/lib/scenarios";
 import { getProfile } from "@/lib/profiles";
 import { getRubric } from "@/lib/rubrics";
+import { getModel } from "@/lib/ai";
 import { store } from "@/lib/store";
 import { executeSimulation } from "@/lib/simulator/pipeline";
 import { createAdapter, adapterConfigSchema } from "@/lib/simulator/factory";
@@ -54,11 +55,14 @@ export async function POST(request: Request) {
   const { patientModel, validatorModel, annotatorModel } = buildRoleModels(provider, apiKey, modelConfig);
 
   const agentModelId = modelConfig.agent ?? modelConfig.patient;
+  const stubModel = adapterConfig.type === "stub"
+    ? getModel(provider, agentModelId, apiKey)
+    : undefined;
   const agentHeaders = { ...aiHeaders, "x-ai-model": agentModelId };
 
   const url = new URL(request.url);
   const baseUrl = `${url.protocol}//${url.host}`;
-  const agent = createAdapter(adapterConfig, baseUrl, agentHeaders);
+  const agent = createAdapter(adapterConfig, baseUrl, agentHeaders, stubModel);
 
   const run: SimulationRun = {
     id: uuidv4(),

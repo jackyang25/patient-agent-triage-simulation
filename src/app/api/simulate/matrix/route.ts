@@ -5,6 +5,7 @@ import type { LanguageModel } from "ai";
 import { SCENARIOS, getScenario } from "@/lib/scenarios";
 import { PROFILES, getProfile } from "@/lib/profiles";
 import { getRubric } from "@/lib/rubrics";
+import { getModel } from "@/lib/ai";
 import { store } from "@/lib/store";
 import { executeSimulation } from "@/lib/simulator/pipeline";
 import { createAdapter, adapterConfigSchema } from "@/lib/simulator/factory";
@@ -28,6 +29,7 @@ interface MatrixContext {
   patientModel: LanguageModel;
   validatorModel: LanguageModel;
   annotatorModel: LanguageModel;
+  stubModel?: LanguageModel;
   maxTurns: number | undefined;
 }
 
@@ -56,6 +58,9 @@ export async function POST(request: Request) {
   const { patientModel, validatorModel, annotatorModel } = buildRoleModels(provider, apiKey, modelConfig);
 
   const agentModelId = modelConfig.agent ?? modelConfig.patient;
+  const stubModel = adapterConfig.type === "stub"
+    ? getModel(provider, agentModelId, apiKey)
+    : undefined;
   const agentHeaders = { ...aiHeaders, "x-ai-model": agentModelId };
 
   const url = new URL(request.url);
@@ -84,7 +89,7 @@ export async function POST(request: Request) {
 
   const ctx: MatrixContext = {
     rubric, adapterConfig, baseUrl, agentHeaders, sessionId,
-    patientModel, validatorModel, annotatorModel, maxTurns,
+    patientModel, validatorModel, annotatorModel, stubModel, maxTurns,
   };
   runMatrix(runs, ctx, concurrency).catch((err) => {
     console.error("Matrix run failed:", err);
@@ -118,7 +123,7 @@ async function runMatrix(runs: SimulationRun[], ctx: MatrixContext, concurrency:
 async function runSingle(run: SimulationRun, ctx: MatrixContext) {
   const {
     rubric, adapterConfig, baseUrl, agentHeaders, sessionId,
-    patientModel, validatorModel, annotatorModel, maxTurns,
+    patientModel, validatorModel, annotatorModel, stubModel, maxTurns,
   } = ctx;
 
   const scenario = getScenario(run.scenarioId);
@@ -134,7 +139,7 @@ async function runSingle(run: SimulationRun, ctx: MatrixContext) {
 
   try {
     store.updateRun(sessionId, run.id, { status: "simulating" });
-    const agent = createAdapter(adapterConfig, baseUrl, agentHeaders);
+    const agent = createAdapter(adapterConfig, baseUrl, agentHeaders, stubModel);
     await executeSimulation(run.id, scenario, profile, rubric, agent, {
       sessionId, patientModel, validatorModel, annotatorModel, maxTurns,
     });
