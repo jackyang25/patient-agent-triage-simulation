@@ -142,7 +142,7 @@ export function Nav() {
               rel="noopener noreferrer"
               className="text-muted-foreground hover:text-foreground transition-colors"
             >
-              docs
+              Docs
             </a>
             <a
               href="https://github.com/jackyang25?tab=repositories"
@@ -150,7 +150,7 @@ export function Nav() {
               rel="noopener noreferrer"
               className="text-muted-foreground hover:text-foreground transition-colors"
             >
-              github
+              GitHub
             </a>
           </nav>
         </div>
