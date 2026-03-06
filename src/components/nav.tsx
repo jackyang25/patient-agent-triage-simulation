@@ -145,7 +145,7 @@ export function Nav() {
               Docs
             </a>
             <a
-              href="https://github.com/jackyang25?tab=repositories"
+              href="https://github.com/jackyang25/patient-agent-triage-simulation"
               target="_blank"
               rel="noopener noreferrer"
               className="text-muted-foreground hover:text-foreground transition-colors"
